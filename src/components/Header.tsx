@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, AlertTriangle, Volume2, VolumeX, Train, Radio, RefreshCw, Octagon } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Volume2, VolumeX, Train, Radio, RefreshCw, Octagon, Sparkles } from 'lucide-react';
 import type { MetroLine, TrainTelemetry } from '../types/metro';
 
 interface HeaderProps {
@@ -11,6 +11,8 @@ interface HeaderProps {
   onResetEmergency: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  onStartDemoTour?: () => void;
+  isDemoTourActive?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onResetEmergency,
   isMuted,
   onToggleMute,
+  onStartDemoTour,
+  isDemoTourActive,
 }) => {
   const isEmergency = telemetry.emergencyBrakeEngaged;
 
@@ -98,6 +102,23 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Guided Tour Demo Button */}
+          {onStartDemoTour && (
+            <button
+              onClick={onStartDemoTour}
+              className={`px-3 py-2 rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer border ${
+                isDemoTourActive
+                  ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-600/30'
+                  : 'bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white border-purple-500/40 shadow-md shadow-purple-900/20'
+              }`}
+              title="Start guided interactive tour showcasing all 5 autonomous safety systems"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="hidden sm:inline">Guided Tour</span>
+              <span className="sm:hidden">Tour</span>
+            </button>
+          )}
+
           {/* Audio toggle */}
           <button
             onClick={onToggleMute}
