@@ -62,12 +62,16 @@ export const ObstacleDetectionView: React.FC<ObstacleDetectionViewProps> = ({
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const handleSelectCamera = (cam: CameraSource) => {
+    setWebcamError(null);
+    setSelectedCam(cam);
+  };
+
   // Handle webcam toggle
   useEffect(() => {
     let stream: MediaStream | null = null;
 
     if (selectedCam === 'webcam') {
-      setWebcamError(null);
       navigator.mediaDevices?.getUserMedia({ video: { width: 1280, height: 720 } })
         .then((s) => {
           stream = s;
@@ -210,7 +214,7 @@ export const ObstacleDetectionView: React.FC<ObstacleDetectionViewProps> = ({
         {/* Camera Selector Pills */}
         <div className="flex flex-wrap items-center gap-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
           <button
-            onClick={() => setSelectedCam('platform_cctv')}
+            onClick={() => handleSelectCamera('platform_cctv')}
             className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               selectedCam === 'platform_cctv'
                 ? 'bg-pink-600 text-white shadow-md shadow-pink-600/30'
@@ -222,7 +226,7 @@ export const ObstacleDetectionView: React.FC<ObstacleDetectionViewProps> = ({
           </button>
 
           <button
-            onClick={() => setSelectedCam('track_cctv')}
+            onClick={() => handleSelectCamera('track_cctv')}
             className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               selectedCam === 'track_cctv'
                 ? 'bg-pink-600 text-white shadow-md shadow-pink-600/30'
@@ -234,7 +238,7 @@ export const ObstacleDetectionView: React.FC<ObstacleDetectionViewProps> = ({
           </button>
 
           <button
-            onClick={() => setSelectedCam('cab_cctv')}
+            onClick={() => handleSelectCamera('cab_cctv')}
             className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               selectedCam === 'cab_cctv'
                 ? 'bg-pink-600 text-white shadow-md shadow-pink-600/30'
@@ -246,7 +250,7 @@ export const ObstacleDetectionView: React.FC<ObstacleDetectionViewProps> = ({
           </button>
 
           <button
-            onClick={() => setSelectedCam('webcam')}
+            onClick={() => handleSelectCamera('webcam')}
             className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               selectedCam === 'webcam'
                 ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/30'
@@ -304,7 +308,7 @@ export const ObstacleDetectionView: React.FC<ObstacleDetectionViewProps> = ({
                     <AlertTriangle className="w-12 h-12 text-amber-400 mb-3" />
                     <p className="font-bold text-white text-sm mb-1">{webcamError}</p>
                     <button
-                      onClick={() => setSelectedCam('platform_cctv')}
+                      onClick={() => handleSelectCamera('platform_cctv')}
                       className="mt-3 px-4 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold"
                     >
                       Return to Simulated Platform CCTV

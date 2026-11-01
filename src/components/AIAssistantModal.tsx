@@ -9,9 +9,22 @@ import {
   Volume2, 
   WifiOff, 
   ShieldAlert, 
-  CheckCircle2
+  CheckCircle2,
+  ArrowUpDown,
+  Clock,
+  IndianRupee,
+  Flame,
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
-import { FIRST_AID_GUIDES, DMRC_EMERGENCY_CONTACTS } from '../services/metroData';
+import { 
+  FIRST_AID_GUIDES, 
+  DMRC_EMERGENCY_CONTACTS, 
+  ALL_METRO_STATIONS, 
+  MAGENTA_LINE_STATIONS, 
+  PINK_LINE_STATIONS, 
+  calculateMetroRoute 
+} from '../services/metroData';
 import { metroAudio } from '../services/audioService';
 
 interface ChatMessage {
@@ -26,7 +39,7 @@ interface ChatMessage {
 }
 
 export const AIAssistantModal: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome-1',
       sender: 'assistant',
@@ -38,6 +51,9 @@ export const AIAssistantModal: React.FC = () => {
   ]);
   const [input, setInput] = useState<string>('');
   const [sosDetails, setSosDetails] = useState<{ station: string; coach: string; issue: string } | null>(null);
+  const [rightPanel, setRightPanel] = useState<'navigator' | 'contacts' | 'guides'>('navigator');
+  const [navOrigin, setNavOrigin] = useState<string>('Hauz Khas');
+  const [navDest, setNavDest] = useState<string>('Botanical Garden');
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -45,10 +61,67 @@ export const AIAssistantModal: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const currentRoute = calculateMetroRoute(navOrigin, navDest);
+
+  const handleSwapStations = () => {
+    const temp = navOrigin;
+    setNavOrigin(navDest);
+    setNavDest(temp);
+    metroAudio.playKeyClick();
+  };
+
+  const handleBroadcastRoute = () => {
+    metroAudio.playDoorChime();
+    metroAudio.speakAnnouncement(
+      `Route from ${currentRoute.origin} to ${currentRoute.destination}. Estimated travel time is ${currentRoute.estimatedMinutes} minutes across ${currentRoute.stationsCount} stations. Please stand behind the yellow line.`
+    );
+  };
+
   // Offline NLP matcher
   const processQuery = (rawQuery: string): ChatMessage => {
     const q = rawQuery.toLowerCase();
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Dynamic Station Route & Interchange Intelligence
+    const matchedStations = ALL_METRO_STATIONS.filter(s => q.includes(s.name.toLowerCase()));
+    if (matchedStations.length >= 2) {
+      const fromStn = matchedStations[0].name;
+      const toStn = matchedStations[1].name;
+      const route = calculateMetroRoute(fromStn, toStn);
+      return {
+        id: `msg-${Date.now()}`,
+        sender: 'assistant',
+        text: `ROUTE GUIDANCE: ${route.origin} ➔ ${route.destination} (${route.line})`,
+        hindiText: `${route.origin} से ${route.destination} तक का मार्ग (~${route.estimatedMinutes} मिनट | किराया ₹${route.fareInr})`,
+        timestamp: timeStr,
+        category: 'ROUTE',
+        actionableSteps: [
+          `Estimated Travel Time: ~${route.estimatedMinutes} mins | Total Stations: ${route.stationsCount} | Fare: ₹${route.fareInr}`,
+          ...route.directions,
+          `Driverless Safety: ${route.safetyAdvisory}`
+        ],
+      };
+    } else if (matchedStations.length === 1 && (q.includes('route') || q.includes('how to') || q.includes('reach') || q.includes('to ') || q.includes('metro') || q.includes('station') || q.includes('line'))) {
+      const targetStn = matchedStations[0];
+      const fromStn = targetStn.name === 'Hauz Khas' ? 'Janakpuri West' : 'Hauz Khas';
+      const route = calculateMetroRoute(fromStn, targetStn.name);
+      return {
+        id: `msg-${Date.now()}`,
+        sender: 'assistant',
+        text: `ROUTE TO ${targetStn.name.toUpperCase()} (${targetStn.line === 'magenta' ? 'Line 8 Magenta UTO' : 'Line 7 Pink UTO'}):`,
+        hindiText: `${targetStn.hindiName} जाने का मार्ग (लगभग ${route.estimatedMinutes} मिनट)`,
+        timestamp: timeStr,
+        category: 'ROUTE',
+        actionableSteps: [
+          `Corridor: ${targetStn.line === 'magenta' ? 'Magenta Line (Line 8 UTO Driverless)' : 'Pink Line (Line 7 UTO Driverless)'}`,
+          `Available Interchanges: ${targetStn.interchangeWith.length > 0 ? targetStn.interchangeWith.join(', ') : 'Direct station'}`,
+          `Platform Edge Doors (PED): ${targetStn.hasPlatformEdgeDoors ? 'Verified SIL-4 Platform Screen Doors Active' : 'Standard Platform'}`,
+          `Sample Journey from ${fromStn}: ~${route.estimatedMinutes} mins across ${route.stationsCount} stops (Fare ₹${route.fareInr})`,
+          ...route.directions,
+          `Safety Advisory: ${route.safetyAdvisory}`
+        ],
+      };
+    }
 
     // 1. Cardiac / Heart attack / Unconscious / CPR
     if (q.includes('cpr') || q.includes('heart') || q.includes('cardiac') || q.includes('unconscious') || q.includes('बेहोश') || q.includes('दिल')) {
@@ -450,10 +523,18 @@ export const AIAssistantModal: React.FC = () => {
             </button>
 
             <button
+              onClick={() => { setInput('Route from Hauz Khas to Botanical Garden'); }}
+              className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-full text-emerald-300 whitespace-nowrap cursor-pointer flex items-center gap-1"
+            >
+              <Navigation className="w-3 h-3 text-emerald-400" />
+              <span>Hauz Khas ➔ Botanical Garden</span>
+            </button>
+
+            <button
               onClick={() => { setInput('How to reach Airport Terminal 1 from Hauz Khas?'); }}
               className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-full text-sky-300 whitespace-nowrap cursor-pointer flex items-center gap-1"
             >
-              <Navigation className="w-3 h-3 text-sky-400" />
+              <Sparkles className="w-3 h-3 text-sky-400" />
               <span>Route to IGI Airport</span>
             </button>
 
@@ -484,66 +565,310 @@ export const AIAssistantModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Right 1 Col: Quick Medical & Emergency Manual */}
+        {/* Right 1 Col: Dynamic Tool Panel */}
         <div className="space-y-4">
-          {/* Emergency Contacts Directory */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
-            <div className="flex items-center gap-2">
-              <PhoneCall className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                DMRC Quick Emergency Lines
-              </h3>
-            </div>
+          {/* Panel Navigation Tabs */}
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setRightPanel('navigator')}
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                rightPanel === 'navigator'
+                  ? 'bg-pink-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              <span>Route AI</span>
+            </button>
 
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400">DMRC 24/7 Helpline:</span>
-                <span className="text-emerald-400 font-black">{DMRC_EMERGENCY_CONTACTS.dmrcHelpline}</span>
-              </div>
+            <button
+              onClick={() => setRightPanel('contacts')}
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                rightPanel === 'contacts'
+                  ? 'bg-pink-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <PhoneCall className="w-3.5 h-3.5" />
+              <span>Helplines</span>
+            </button>
 
-              <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400">CISF Security Room:</span>
-                <span className="text-sky-300">{DMRC_EMERGENCY_CONTACTS.cisfSecurity}</span>
-              </div>
-
-              <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400">Women Safety:</span>
-                <span className="text-pink-400 font-black">1091</span>
-              </div>
-
-              <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400">Delhi Police / CATS:</span>
-                <span className="text-amber-400 font-black">112 / 102</span>
-              </div>
-            </div>
+            <button
+              onClick={() => setRightPanel('guides')}
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                rightPanel === 'guides'
+                  ? 'bg-pink-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>First-Aid</span>
+            </button>
           </div>
 
-          {/* Station Safety Equipment Locations */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3 text-xs">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-pink-400" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Safety Equipment Locations
-              </h3>
+          {/* TAB 1: Offline Route Navigator & Fare Matrix */}
+          {rightPanel === 'navigator' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-pink-400" />
+                  <h3 className="font-bold text-white uppercase tracking-wider text-[11px]">
+                    Offline UTO Route & Fare Planner
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  Zero Network Latency
+                </span>
+              </div>
+
+              {/* Origin & Destination Selectors */}
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">
+                    Origin Station
+                  </label>
+                  <select
+                    value={navOrigin}
+                    onChange={(e) => setNavOrigin(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-pink-500 font-sans"
+                  >
+                    <optgroup label="Magenta Line (Line 8)">
+                      {MAGENTA_LINE_STATIONS.map(s => (
+                        <option key={`orig-${s.name}`} value={s.name}>{s.name} ({s.hindiName})</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Pink Line (Line 7)">
+                      {PINK_LINE_STATIONS.map(s => (
+                        <option key={`orig-${s.name}`} value={s.name}>{s.name} ({s.hindiName})</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* Swap button */}
+                <div className="flex justify-center -my-1">
+                  <button
+                    onClick={handleSwapStations}
+                    title="Swap Origin and Destination"
+                    className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer transition-colors shadow"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5 text-pink-400" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">
+                    Destination Station
+                  </label>
+                  <select
+                    value={navDest}
+                    onChange={(e) => setNavDest(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-pink-500 font-sans"
+                  >
+                    <optgroup label="Magenta Line (Line 8)">
+                      {MAGENTA_LINE_STATIONS.map(s => (
+                        <option key={`dest-${s.name}`} value={s.name}>{s.name} ({s.hindiName})</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Pink Line (Line 7)">
+                      {PINK_LINE_STATIONS.map(s => (
+                        <option key={`dest-${s.name}`} value={s.name}>{s.name} ({s.hindiName})</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              {/* Calculated Metrics */}
+              <div className="grid grid-cols-3 gap-2 py-1 font-mono text-center">
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                  <span className="text-[9px] text-slate-400 uppercase block">Travel Time</span>
+                  <span className="text-sm font-bold text-sky-400 flex items-center justify-center gap-1 mt-0.5">
+                    <Clock className="w-3 h-3" />
+                    ~{currentRoute.estimatedMinutes}m
+                  </span>
+                </div>
+
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                  <span className="text-[9px] text-slate-400 uppercase block">Smart Fare</span>
+                  <span className="text-sm font-bold text-emerald-400 flex items-center justify-center gap-0.5 mt-0.5">
+                    <IndianRupee className="w-3 h-3" />
+                    {currentRoute.fareInr}
+                  </span>
+                </div>
+
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                  <span className="text-[9px] text-slate-400 uppercase block">Stops</span>
+                  <span className="text-sm font-bold text-pink-400 mt-0.5 block">
+                    {currentRoute.stationsCount} Stns
+                  </span>
+                </div>
+              </div>
+
+              {/* Route Line Badge */}
+              <div className="p-2 rounded-lg bg-pink-950/40 border border-pink-500/30 text-pink-200 text-[11px] font-mono flex items-center justify-between">
+                <span>Corridor: <strong>{currentRoute.line}</strong></span>
+                {currentRoute.interchangeLine && (
+                  <span className="px-1.5 py-0.5 bg-pink-900/60 rounded text-[10px] text-white">
+                    Via {currentRoute.interchangeLine}
+                  </span>
+                )}
+              </div>
+
+              {/* Step-by-step directions list */}
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {currentRoute.directions.map((dir, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-1.5 rounded bg-slate-950 border border-slate-800 text-[11px] text-slate-300">
+                    <span className="w-4 h-4 rounded-full bg-pink-600/30 text-pink-300 flex items-center justify-center shrink-0 font-mono text-[10px] font-bold">
+                      {idx + 1}
+                    </span>
+                    <span>{dir}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Safety Advisory Banner */}
+              <div className="p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-[10px] text-amber-300 flex items-start gap-1.5">
+                <AlertOctagon className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>{currentRoute.safetyAdvisory}</span>
+              </div>
+
+              {/* Audio & Chat Action Buttons */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleBroadcastRoute}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+                  <span>P.A. Audio</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setInput(`How to travel from ${currentRoute.origin} to ${currentRoute.destination}?`);
+                  }}
+                  className="flex-1 py-2 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-pink-600/20"
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>Ask in Chat</span>
+                </button>
+              </div>
             </div>
+          )}
 
-            <div className="space-y-2 text-slate-300">
-              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                <strong className="text-white block">Emergency Stop Plunger (ESP):</strong>
-                <span className="text-[11px] text-slate-400">Mounted on Platform Pillars 3, 7, and 12 near PED Doors. Stops all driverless trains immediately.</span>
+          {/* TAB 2: Emergency Helplines & Equipment */}
+          {rightPanel === 'contacts' && (
+            <div className="space-y-4">
+              {/* Emergency Contacts Directory */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <PhoneCall className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    DMRC Quick Emergency Lines
+                  </h3>
+                </div>
+
+                <div className="space-y-2 text-xs font-mono">
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-400">DMRC 24/7 Helpline:</span>
+                    <span className="text-emerald-400 font-black">{DMRC_EMERGENCY_CONTACTS.dmrcHelpline}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-400">CISF Security Room:</span>
+                    <span className="text-sky-300">{DMRC_EMERGENCY_CONTACTS.cisfSecurity}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-400">Women Safety:</span>
+                    <span className="text-pink-400 font-black">1091</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-400">Delhi Police / CATS:</span>
+                    <span className="text-amber-400 font-black">112 / 102</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-400">OCC Shastri Park:</span>
+                    <span className="text-rose-400 font-bold">{DMRC_EMERGENCY_CONTACTS.occShastriPark}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                <strong className="text-white block">Automated External Defibrillator (AED):</strong>
-                <span className="text-[11px] text-slate-400">Located at the Station Customer Care Center near AFC gates.</span>
-              </div>
+              {/* Station Safety Equipment Locations */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-pink-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Safety Equipment Locations
+                  </h3>
+                </div>
 
-              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                <strong className="text-white block">Passenger Emergency Alarm (PEA):</strong>
-                <span className="text-[11px] text-slate-400">Inside every train coach adjacent to doors 2 and 4. Connects duplex voice directly to OCC.</span>
+                <div className="space-y-2 text-slate-300">
+                  <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                    <strong className="text-white block">Emergency Stop Plunger (ESP):</strong>
+                    <span className="text-[11px] text-slate-400">Mounted on Platform Pillars 3, 7, and 12 near PED Doors. Stops all driverless trains immediately.</span>
+                  </div>
+
+                  <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                    <strong className="text-white block">Automated External Defibrillator (AED):</strong>
+                    <span className="text-[11px] text-slate-400">Located at the Station Customer Care Center near AFC gates.</span>
+                  </div>
+
+                  <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                    <strong className="text-white block">Passenger Emergency Alarm (PEA):</strong>
+                    <span className="text-[11px] text-slate-400">Inside every train coach adjacent to doors 2 and 4. Connects duplex voice directly to OCC.</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* TAB 3: First-Aid Protocols Handbook */}
+          {rightPanel === 'guides' && (
+            <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
+              {FIRST_AID_GUIDES.map((guide) => (
+                <div key={guide.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      {guide.category === 'MEDICAL' && <HeartPulse className="w-4 h-4 text-pink-400" />}
+                      {guide.category === 'ACCIDENT' && <AlertOctagon className="w-4 h-4 text-red-400" />}
+                      {guide.category === 'FIRE' && <Flame className="w-4 h-4 text-amber-400" />}
+                      <h4 className="font-bold text-white text-[11px]">{guide.title}</h4>
+                    </div>
+                    <button
+                      onClick={() => metroAudio.speakAnnouncement(guide.steps.join('. '))}
+                      className="p-1 text-slate-400 hover:text-white cursor-pointer"
+                      title="Listen audio announcement"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+                    </button>
+                  </div>
+
+                  <p className="font-hindi text-[10px] text-pink-300">{guide.hindiTitle}</p>
+
+                  <ul className="space-y-1 pt-1 border-t border-slate-800 text-[11px] text-slate-300">
+                    {guide.steps.slice(0, 3).map((st, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-pink-400 font-bold shrink-0">›</span>
+                        <span>{st}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    onClick={() => {
+                      setInput(`First aid steps for ${guide.title}`);
+                    }}
+                    className="w-full mt-1 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded text-[10px] text-slate-300 font-mono font-bold cursor-pointer"
+                  >
+                    Open Full Protocol in Chat ↗
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

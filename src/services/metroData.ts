@@ -177,3 +177,166 @@ export const DMRC_EMERGENCY_CONTACTS = {
   occShastriPark: '011-23417910',
   seniorCitizenHelpline: '14567'
 };
+
+export const ALL_METRO_STATIONS: StationInfo[] = [
+  ...MAGENTA_LINE_STATIONS,
+  ...PINK_LINE_STATIONS
+];
+
+export interface RouteResult {
+  origin: string;
+  destination: string;
+  stationsCount: number;
+  estimatedMinutes: number;
+  fareInr: number;
+  line: 'Magenta Line (Line 8)' | 'Pink Line (Line 7)' | 'Interchange (Magenta ⇄ Pink)';
+  interchangeStation?: string;
+  interchangeLine?: string;
+  path: string[];
+  directions: string[];
+  safetyAdvisory: string;
+}
+
+export function calculateMetroRoute(originName: string, destinationName: string): RouteResult {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const originStation = ALL_METRO_STATIONS.find(s => norm(s.name) === norm(originName));
+  const destStation = ALL_METRO_STATIONS.find(s => norm(s.name) === norm(destinationName));
+
+  const origin = originStation ? originStation.name : originName;
+  const destination = destStation ? destStation.name : destinationName;
+
+  if (origin === destination) {
+    return {
+      origin,
+      destination,
+      stationsCount: 0,
+      estimatedMinutes: 0,
+      fareInr: 10,
+      line: 'Magenta Line (Line 8)',
+      path: [origin],
+      directions: ['You are already at the destination station.'],
+      safetyAdvisory: 'Platform Edge Doors (PEDs) operate automatically. Stand behind yellow tactile strip.'
+    };
+  }
+
+  const magFromIdx = MAGENTA_LINE_STATIONS.findIndex(s => s.name === origin);
+  const magToIdx = MAGENTA_LINE_STATIONS.findIndex(s => s.name === destination);
+  const pinkFromIdx = PINK_LINE_STATIONS.findIndex(s => s.name === origin);
+  const pinkToIdx = PINK_LINE_STATIONS.findIndex(s => s.name === destination);
+
+  // Case 1: Both on Magenta Line
+  if (magFromIdx !== -1 && magToIdx !== -1) {
+    const forward = magToIdx > magFromIdx;
+    const path = forward
+      ? MAGENTA_LINE_STATIONS.slice(magFromIdx, magToIdx + 1).map(s => s.name)
+      : MAGENTA_LINE_STATIONS.slice(magToIdx, magFromIdx + 1).reverse().map(s => s.name);
+    const count = path.length - 1;
+    const direction = forward ? 'Botanical Garden' : 'Janakpuri West';
+    const estimatedMinutes = Math.round(count * 2.2);
+    const fareInr = count <= 2 ? 10 : count <= 5 ? 20 : count <= 12 ? 30 : count <= 21 ? 40 : 50;
+
+    return {
+      origin,
+      destination,
+      stationsCount: count,
+      estimatedMinutes,
+      fareInr,
+      line: 'Magenta Line (Line 8)',
+      path,
+      directions: [
+        `Board westbound/eastbound Magenta Line driverless train towards "${direction}".`,
+        `Ride across ${count} stations (${path.slice(1, -1).join(' → ') || 'Direct next stop'}).`,
+        `Alight safely at "${destination}". Platform Edge Doors (PED) open automatically on the left side.`
+      ],
+      safetyAdvisory: 'UTO Level 4 Driverless operation. Keep hands clear of closing PED glass doors (3-pulse acoustic alarm).'
+    };
+  }
+
+  // Case 2: Both on Pink Line
+  if (pinkFromIdx !== -1 && pinkToIdx !== -1) {
+    const forward = pinkToIdx > pinkFromIdx;
+    const path = forward
+      ? PINK_LINE_STATIONS.slice(pinkFromIdx, pinkToIdx + 1).map(s => s.name)
+      : PINK_LINE_STATIONS.slice(pinkToIdx, pinkFromIdx + 1).reverse().map(s => s.name);
+    const count = path.length - 1;
+    const direction = forward ? 'Shiv Vihar' : 'Majlis Park';
+    const estimatedMinutes = Math.round(count * 2.3);
+    const fareInr = count <= 2 ? 10 : count <= 5 ? 20 : count <= 12 ? 30 : count <= 21 ? 40 : 50;
+
+    return {
+      origin,
+      destination,
+      stationsCount: count,
+      estimatedMinutes,
+      fareInr,
+      line: 'Pink Line (Line 7)',
+      path,
+      directions: [
+        `Board Pink Line driverless train towards "${direction}".`,
+        `Ride across ${count} stations (${path.slice(1, -1).join(' → ') || 'Direct next stop'}).`,
+        `Alight safely at "${destination}". All platforms have full-height Platform Screen Doors.`
+      ],
+      safetyAdvisory: 'Anti-Pinch NIR light curtain active. Bag straps exceeding 15mm will trigger automatic 3-cycle reopening.'
+    };
+  }
+
+  // Case 3: Interchange between Magenta and Pink Line
+  const isFromMagenta = magFromIdx !== -1;
+  const magentaStation = isFromMagenta ? origin : destination;
+  const pinkStation = isFromMagenta ? destination : origin;
+
+  // Decide best interchange hub
+  let hubMagenta = 'Hauz Khas';
+  let hubPink = 'Dilli Haat INA';
+  let transferLine = 'Yellow Line';
+
+  // East stations transfer via Blue line (Botanical Garden ⇄ Mayur Vihar-I)
+  const eastPinkStations = ['Mayur Vihar-I', 'Anand Vihar ISBT', 'Karkarduma', 'Welcome', 'Shiv Vihar'];
+  if (eastPinkStations.includes(pinkStation)) {
+    hubMagenta = 'Botanical Garden';
+    hubPink = 'Mayur Vihar-I';
+    transferLine = 'Blue Line';
+  } else if (['Rajouri Garden', 'Punjabi Bagh West', 'Netaji Subhash Place', 'Azadpur', 'Majlis Park'].includes(pinkStation)) {
+    hubMagenta = 'Janakpuri West';
+    hubPink = 'Rajouri Garden';
+    transferLine = 'Blue Line';
+  }
+
+  const magSubIdx = MAGENTA_LINE_STATIONS.findIndex(s => s.name === magentaStation);
+  const magHubIdx = MAGENTA_LINE_STATIONS.findIndex(s => s.name === hubMagenta);
+  const magLegCount = Math.abs(magSubIdx - magHubIdx);
+
+  const pinkSubIdx = PINK_LINE_STATIONS.findIndex(s => s.name === pinkStation);
+  const pinkHubIdx = PINK_LINE_STATIONS.findIndex(s => s.name === hubPink);
+  const pinkLegCount = Math.abs(pinkSubIdx - pinkHubIdx);
+
+  const totalStations = magLegCount + pinkLegCount + 2; // including interchange link
+  const estimatedMinutes = Math.round(totalStations * 2.3 + 6); // +6 mins interchange walking
+  const fareInr = Math.min(60, Math.max(30, totalStations <= 10 ? 30 : totalStations <= 18 ? 40 : totalStations <= 24 ? 50 : 60));
+
+  const leg1 = isFromMagenta
+    ? `Leg 1: Board Magenta Line from "${origin}" to interchange hub "${hubMagenta}" (${magLegCount} stops).`
+    : `Leg 1: Board Pink Line from "${origin}" to interchange hub "${hubPink}" (${pinkLegCount} stops).`;
+
+  const leg2 = isFromMagenta
+    ? `Interchange: Follow the green directional floor signage to transfer via ${transferLine} to "${hubPink}" (Pink Line).`
+    : `Interchange: Follow the floor signs to transfer via ${transferLine} to "${hubMagenta}" (Magenta Line).`;
+
+  const leg3 = isFromMagenta
+    ? `Leg 2: Board Pink Line towards "${destination}" (${pinkLegCount} stops). Alight at "${destination}".`
+    : `Leg 2: Board Magenta Line towards "${destination}" (${magLegCount} stops). Alight at "${destination}".`;
+
+  return {
+    origin,
+    destination,
+    stationsCount: totalStations,
+    estimatedMinutes,
+    fareInr,
+    line: 'Interchange (Magenta ⇄ Pink)',
+    interchangeStation: isFromMagenta ? `${hubMagenta} ➔ ${hubPink}` : `${hubPink} ➔ ${hubMagenta}`,
+    interchangeLine: transferLine,
+    path: [origin, isFromMagenta ? hubMagenta : hubPink, isFromMagenta ? hubPink : hubMagenta, destination],
+    directions: [leg1, leg2, leg3],
+    safetyAdvisory: 'Interchange corridors at Hauz Khas and Rajouri Garden feature high commuter footfall. Follow floor directional arrows and keep behind yellow tactile lines.'
+  };
+}
