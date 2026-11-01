@@ -123,25 +123,31 @@ npm run preview
 
 To test the system during demonstrations:
 
-1. **Test Real-Time Obstacle Detection & Auto-Braking**:
+1. **Launch the Guided SIL-4 Presentation Tour**:
+   - Click the top purple **Guided Tour** button in the header.
+   - Walk through the 6 automated modules with auto-advancing slides or manual controls.
+
+2. **Test Real-Time Obstacle Detection & Auto-Braking**:
    - Navigate to the **AI Obstacle & Intrusion Vision** tab.
    - Click anywhere on the bottom (Track Bed) area of the camera view to drop an obstacle.
    - Observe the immediate red bounding box, siren alarm, and the automated **SIL-4 Emergency Brake** trip command stopping the train.
    - Click **Reset Emergency Stop** to resume normal operations.
 
-2. **Test Platform Edge Door (PED) Anti-Pinch**:
+3. **Test Platform Edge Door (PED) Anti-Pinch**:
    - Go to the **Platform Edge Doors (PED)** tab.
    - Select Door #7 and click **Simulate Trapped Backpack Strap / Object**.
    - Note the gap sensor trip, traction loop rupture, and automated retry count.
    - Click **Clear Obstruction** to verify the SIL-4 loop lock.
 
-3. **Experience DMRC Saathi Offline Assistant**:
+4. **Experience DMRC Saathi Offline Assistant & Route Planner**:
    - Go to the **DMRC Saathi** tab.
+   - Switch between **Route AI**, **Helplines**, and **First-Aid** panels in the right sidebar.
+   - Select origin (e.g. *Hauz Khas*) and destination (e.g. *Botanical Garden* or *Rajouri Garden*) to compute exact travel time, DMRC fare slabs, and interchange directions.
    - Click **Cardiac CPR Steps** or type *"Someone fell on track! Emergency Stop Plunger?"*.
    - Listen to the synthesized voice read out step-by-step emergency instructions.
    - Click **1-Tap Emergency SOS** to test instant emergency dispatch.
 
-4. **Verify CMRS Regulatory Export**:
+5. **Verify CMRS Regulatory Export**:
    - Go to the **CMRS Safety Blackbox** tab.
    - Click **Export JSON Audit** or **Print Audit Certificate** to inspect timestamped telemetry records.
 
