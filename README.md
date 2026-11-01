@@ -2,11 +2,14 @@
 
 > **An Open-Source AI Safety & Operations Control Ecosystem for Unattended Train Operation (UTO) on Delhi Metro's Magenta (Line 8) and Pink (Line 7) Lines.**
 
+[![Live Demo](https://img.shields.io/badge/Live_Site-q8z9jkbf.insforge.site-purple?style=flat-square)](https://q8z9jkbf.insforge.site)
 [![Safety Integrity Level](https://img.shields.io/badge/Safety_Level-SIL--4_Compliant-emerald?style=flat-square)](#)
 [![DMRC UTO Operations](https://img.shields.io/badge/DMRC-UTO_Level_4-pink?style=flat-square)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![React 19 & TypeScript](https://img.shields.io/badge/Frontend-React_19_+_TypeScript-sky?style=flat-square)](#)
 [![Offline AI Engine](https://img.shields.io/badge/AI_Engine-100%25_Offline_Ready-purple?style=flat-square)](#)
+
+🌐 **Live URL**: [https://q8z9jkbf.insforge.site](https://q8z9jkbf.insforge.site)
 
 ---
 
