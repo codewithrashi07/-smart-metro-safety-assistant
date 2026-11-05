@@ -99,7 +99,7 @@ Without an in-cab train operator, traditional visual safety verification—such 
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/smart-metro-safety-assistant.git
+git clone https://github.com/codewithrashi07/smart-metro-safety-assistant.git
 
 # Navigate into the project folder
 cd smart-metro-safety-assistant
